@@ -35,6 +35,11 @@ function App() {
         value: summary.averageSales.toFixed(1),
         note: `Business type: ${summary.businessType}`,
       },
+      {
+        title: 'Best model error (MAE)',
+        value: summary.scores ? String(summary.scores[summary.method]) : '--',
+        note: `Backtest winner: ${summary.method.replaceAll('_', ' ')}`,
+      },
     ]
   }
 
