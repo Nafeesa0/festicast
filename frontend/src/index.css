@@ -10,3 +10,7 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #f5f7fa; color
 .card-title { margin: 0; color: #52606d; font-size: 14px; }
 .card-value { margin: 8px 0; font-size: 32px; }
 .card-note { margin: 0; color: #7b8794; font-size: 13px; }
+
+.upload-card { margin-bottom: 16px; }
+.upload-card h2 { margin-top: 0; }
+.preview { background: #f0f4f8; padding: 12px; border-radius: 8px; overflow-x: auto; }

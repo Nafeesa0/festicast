@@ -1,5 +1,6 @@
 import Header from './components/Header'
 import MetricCard from './components/MetricCard'
+import UploadCard from './components/UploadCard'
 
 const sampleMetrics = [
   { title: 'Next 30 days forecast', value: '₹4.2L', note: 'Range ₹3.8L to ₹4.7L' },
@@ -12,6 +13,7 @@ function App() {
     <div>
       <Header />
       <main className="container">
+        <UploadCard />
         <div className="card-grid">
           {sampleMetrics.map((metric) => (
             <MetricCard
