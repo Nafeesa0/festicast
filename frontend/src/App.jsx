@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import Header from './components/Header'
 import MetricCard from './components/MetricCard'
 import UploadCard from './components/UploadCard'
+import SalesChart from './components/SalesChart'
 
 const sampleMetrics = [
   { title: 'Next 30 days forecast', value: '₹4.2L', note: 'Range ₹3.8L to ₹4.7L' },
@@ -9,13 +11,32 @@ const sampleMetrics = [
 ]
 
 function App() {
+  const [salesData, setSalesData] = useState([])
+  const [summary, setSummary] = useState(null)
+
+  const metrics = summary
+    ? [
+        {
+          title: 'Total sales (from backend)',
+          value: summary.totalSales.toLocaleString('en-IN'),
+          note: `${summary.count} days uploaded`,
+        },
+        {
+          title: 'Average daily sales',
+          value: summary.averageSales.toFixed(1),
+          note: `Business type: ${summary.businessType}`,
+        },
+      ]
+    : sampleMetrics
+
   return (
     <div>
       <Header />
       <main className="container">
-        <UploadCard />
+        <UploadCard onDataLoaded={setSalesData} onSummary={setSummary} />
+        <SalesChart data={salesData} />
         <div className="card-grid">
-          {sampleMetrics.map((metric) => (
+          {metrics.map((metric) => (
             <MetricCard
               key={metric.title}
               title={metric.title}
