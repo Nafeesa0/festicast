@@ -14,3 +14,6 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #f5f7fa; color
 .upload-card { margin-bottom: 16px; }
 .upload-card h2 { margin-top: 0; }
 .preview { background: #f0f4f8; padding: 12px; border-radius: 8px; overflow-x: auto; }
+
+.chart-card { margin-bottom: 16px; }
+.chart-card h2 { margin-top: 0; }
