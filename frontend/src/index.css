@@ -3,3 +3,10 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #f5f7fa; color
 .header { background: #0f766e; color: white; padding: 24px 32px; }
 .header h1 { margin: 0; }
 .header p { margin: 4px 0 0; opacity: 0.9; }
+
+.container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.card-title { margin: 0; color: #52606d; font-size: 14px; }
+.card-value { margin: 8px 0; font-size: 32px; }
+.card-note { margin: 0; color: #7b8794; font-size: 13px; }
