@@ -1,0 +1,5 @@
+[
+  { "name": "Example festival A", "start": "2025-09-10", "end": "2025-09-16" },
+  { "name": "Example festival B", "start": "2026-02-18", "end": "2026-02-24" },
+  { "name": "Example festival C", "start": "2026-06-27", "end": "2026-07-03" }
+]
