@@ -41,6 +41,7 @@ function App() {
       },
       {
         title: 'Recommended order (7 days)',
+        highlight: true,
         value: orderTotal.toLocaleString('en-IN'),
         note: decision
           ? `Aims to cover demand on about ${Math.round(decision.critical_ratio * 100)} of 100 days (${signed(decision.offset)} per day vs forecast)`
@@ -88,7 +89,7 @@ function App() {
 
   return (
     <div>
-      <Header />
+      <Header businessType={summary ? summary.businessType : ''} />
       <main className="container">
         <UploadCard onDataLoaded={setSalesData} onSummary={setSummary} />
         <SalesChart data={salesData} forecast={forecast} />
@@ -99,6 +100,7 @@ function App() {
               title={metric.title}
               value={metric.value}
               note={metric.note}
+              highlight={metric.highlight}
             />
           ))}
         </div>

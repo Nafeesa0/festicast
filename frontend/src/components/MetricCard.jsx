@@ -1,6 +1,6 @@
-function MetricCard({ title, value, note }) {
+function MetricCard({ title, value, note, highlight }) {
   return (
-    <div className="card">
+    <div className={highlight ? 'card card-highlight' : 'card'}>
       <p className="card-title">{title}</p>
       <h2 className="card-value">{value}</h2>
       <p className="card-note">{note}</p>

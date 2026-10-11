@@ -223,6 +223,7 @@ def forecast(req: ForecastRequest):
             "lower": None,
             "upper": None,
             "order": max(0, round(p + offset)),
+            "festival": day in festival_days,
         }
         if error_range:
             row["lower"] = round(max(0, p + error_range["low"]), 1)

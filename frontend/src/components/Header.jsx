@@ -1,9 +1,17 @@
-function Header() {
+function Header({ businessType }) {
   return (
-    <header className="header">
-      <h1>FestiCast</h1>
-      <p>Forecast demand the way your business decides.</p>
-    </header>
+    <>
+      <div className="stripe" />
+      <header className="header">
+        <div>
+          <h1>
+            <span>Festi</span>Cast
+          </h1>
+          <p>Forecast demand the way your business decides.</p>
+        </div>
+        {businessType && <span className="badge">{businessType}</span>}
+      </header>
+    </>
   )
 }
 
