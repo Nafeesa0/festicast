@@ -17,3 +17,8 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #f5f7fa; color
 
 .chart-card { margin-bottom: 16px; }
 .chart-card h2 { margin-top: 0; }
+
+.cost-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.field input { display: block; margin-top: 4px; padding: 8px; border-radius: 8px; border: 1px solid #cbd2d9; font-size: 14px; width: 180px; }
+.recalc { display: block; margin-top: 12px; padding: 8px 16px; border: 0; border-radius: 8px; background: #0f766e; color: white; cursor: pointer; }
+.recalc:disabled { background: #9aa5b1; cursor: not-allowed; }

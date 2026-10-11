@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 app = FastAPI(title="FestiCast ML Service")
 
@@ -21,6 +21,8 @@ class Row(BaseModel):
 class ForecastRequest(BaseModel):
     rows: list[Row]
     horizon: int = 7
+    underage_cost: float = Field(default=50, gt=0)  # cost per unit of running out
+    overage_cost: float = Field(default=50, gt=0)  # cost per unit left over
 
 
 def load_festival_days():
@@ -62,6 +64,18 @@ def quantile(sorted_values, q):
     high = min(low + 1, len(sorted_values) - 1)
     fraction = position - low
     return sorted_values[low] + (sorted_values[high] - sorted_values[low]) * fraction
+
+
+def average_cost(residuals, offset, under, over):
+    """Average daily cost if we always order (forecast + offset).
+
+    residual = actual - forecast. Demand above our order costs `under` per unit;
+    stock above demand costs `over` per unit.
+    """
+    total = 0.0
+    for r in residuals:
+        total += under * max(r - offset, 0) + over * max(offset - r, 0)
+    return total / len(residuals)
 
 
 def naive(values, dates, future_dates, festival_days):
@@ -155,30 +169,34 @@ def forecast(req: ForecastRequest):
     future_dates = [dates[-1] + timedelta(days=i + 1) for i in range(req.horizon)]
     predictions = MODELS[best](values, dates, future_dates, festival_days)
 
+    best_residuals = residuals.get(best, [])  # kept in time order
+    sorted_residuals = sorted(best_residuals)
+    enough = len(best_residuals) >= MIN_RESIDUALS
+
     # prediction interval from the winning model's backtest misses
-    best_residuals = sorted(residuals.get(best, []))
     error_range = None
-    if len(best_residuals) >= MIN_RESIDUALS:
+    if enough:
         tail = (1 - LEVEL) / 2
         error_range = {
-            "low": round(quantile(best_residuals, tail), 1),
-            "high": round(quantile(best_residuals, 1 - tail), 1),
+            "low": round(quantile(sorted_residuals, tail), 1),
+            "high": round(quantile(sorted_residuals, 1 - tail), 1),
             "level": LEVEL,
             "samples": len(best_residuals),
         }
 
-    forecast_rows = []
-    for day, p in zip(future_dates, predictions):
-        row = {"date": day.isoformat(), "sales": round(p, 1), "lower": None, "upper": None}
-        if error_range:
-            row["lower"] = round(max(0, p + error_range["low"]), 1)
-            row["upper"] = round(p + error_range["high"], 1)
-        forecast_rows.append(row)
+    # decision layer: newsvendor rule
+    under, over = req.underage_cost, req.overage_cost
+    critical = min(max(under / (under + over), 0.05), 0.95)
+    offset = 0.0
+    decision = None
+    if enough:
+        offset = quantile(sorted_residuals, critical)
+        decision = {
+            "critical_ratio": round(critical, 2),
+            "offset": round(offset, 1),
+            "holdout": None,
+        }
 
-    return {
-        "method": best,
-        "scores": scores,
-        "festival_uplift": round(learn_uplift(values, dates, festival_days), 2),
-        "error_range": error_range,
-        "forecast": forecast_rows,
-    }
+        # fair test: learn the offset on the first half of the misses,
+        # then measure cost on the second half it has never seen
+        half = len(best_residuals)

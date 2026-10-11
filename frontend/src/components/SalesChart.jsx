@@ -64,13 +64,21 @@ function SalesChart({ data, forecast }) {
             strokeWidth={2}
             dot={false}
           />
-          <Line
+            <Line
             type="monotone"
             dataKey="forecast"
             name="Forecast"
             stroke="#d97706"
             strokeWidth={2}
             strokeDasharray="6 4"
+          />
+          <Line
+            type="monotone"
+            dataKey="order"
+            name="Recommended order"
+            stroke="#6d28d9"
+            strokeWidth={2}
+            strokeDasharray="2 3"
           />
         </ComposedChart>
       </ResponsiveContainer>
