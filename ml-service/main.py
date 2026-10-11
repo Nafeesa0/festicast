@@ -18,6 +18,46 @@ class ForecastRequest(BaseModel):
     horizon: int = 7
 
 
+def naive(history, horizon):
+    return [history[-1]] * horizon
+
+
+def seasonal_naive(history, horizon):
+    last_week = history[-SEASON:]
+    return [last_week[i % SEASON] for i in range(horizon)]
+
+
+def moving_average(history, horizon, window=7):
+    average = sum(history[-window:]) / window
+    return [average] * horizon
+
+
+MODELS = {
+    "naive": naive,
+    "seasonal_naive": seasonal_naive,
+    "moving_average": moving_average,
+}
+
+
+def backtest(values, horizon):
+    """Pretend to forecast the past, and measure the average miss (MAE)."""
+    errors = {name: [] for name in MODELS}
+    first_cut = max(SEASON * 2, len(values) // 2)
+
+    for cut in range(first_cut, len(values) - horizon + 1, horizon):
+        history = values[:cut]
+        actual = values[cut : cut + horizon]
+        for name, model in MODELS.items():
+            predicted = model(history, horizon)
+            errors[name].extend(abs(a - p) for a, p in zip(actual, predicted))
+
+    return {
+        name: round(sum(errs) / len(errs), 2)
+        for name, errs in errors.items()
+        if errs
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "festicast-ml"}
@@ -41,14 +81,16 @@ def forecast(req: ForecastRequest):
             detail="Dates must look like 2026-09-01.",
         )
 
-    last_week = values[-SEASON:]
-    forecast_rows = []
-    for i in range(req.horizon):
-        forecast_rows.append(
-            {
-                "date": (last_date + timedelta(days=i + 1)).isoformat(),
-                "sales": last_week[i % SEASON],
-            }
-        )
+    scores = backtest(values, req.horizon)
+    best = min(scores, key=scores.get) if scores else "seasonal_naive"
+    predictions = MODELS[best](values, req.horizon)
 
-    return {"method": "seasonal_naive", "forecast": forecast_rows}
+    forecast_rows = [
+        {
+            "date": (last_date + timedelta(days=i + 1)).isoformat(),
+            "sales": round(p, 1),
+        }
+        for i, p in enumerate(predictions)
+    ]
+
+    return {"method": best, "scores": scores, "forecast": forecast_rows}
