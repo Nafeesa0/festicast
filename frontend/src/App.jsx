@@ -17,8 +17,14 @@ function App() {
   const forecast = summary ? summary.forecast : []
 
   let metrics = sampleMetrics
-  if (summary) {
+   if (summary) {
     const forecastTotal = forecast.reduce((sum, row) => sum + row.sales, 0)
+    const scoreList = summary.scores
+      ? Object.entries(summary.scores)
+          .map(([name, value]) => `${name.replaceAll('_', ' ')}: ${value}`)
+          .join(' | ')
+      : ''
+
     metrics = [
       {
         title: 'Next 7 days forecast',
@@ -38,7 +44,12 @@ function App() {
       {
         title: 'Best model error (MAE)',
         value: summary.scores ? String(summary.scores[summary.method]) : '--',
-        note: `Backtest winner: ${summary.method.replaceAll('_', ' ')}`,
+        note: scoreList,
+      },
+      {
+        title: 'Learned festival uplift',
+        value: summary.festivalUplift ? `${summary.festivalUplift}x` : '--',
+        note: '1.0x means no festival effect found',
       },
     ]
   }
