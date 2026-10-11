@@ -8,6 +8,8 @@ from pydantic import BaseModel
 app = FastAPI(title="FestiCast ML Service")
 
 SEASON = 7  # weekly pattern
+LEVEL = 0.8  # we build an 80% prediction interval
+MIN_RESIDUALS = 10  # need at least this many backtest misses to build a range
 FESTIVAL_FILE = Path(__file__).parent / "festivals.json"
 
 
@@ -41,7 +43,6 @@ def learn_uplift(values, dates, festival_days):
     for i, day in enumerate(dates):
         if day not in festival_days:
             continue
-        # normal sales on the same weekday in the 4 weeks before, ignoring festivals
         normal = [
             values[j]
             for j in range(max(0, i - 28), i)
@@ -52,6 +53,15 @@ def learn_uplift(values, dates, festival_days):
     if not ratios:
         return 1.0
     return sum(ratios) / len(ratios)
+
+
+def quantile(sorted_values, q):
+    """The value below which a fraction q of the sorted list falls."""
+    position = (len(sorted_values) - 1) * q
+    low = int(position)
+    high = min(low + 1, len(sorted_values) - 1)
+    fraction = position - low
+    return sorted_values[low] + (sorted_values[high] - sorted_values[low]) * fraction
 
 
 def naive(values, dates, future_dates, festival_days):
@@ -72,7 +82,6 @@ def festival_seasonal_naive(values, dates, future_dates, festival_days):
     uplift = learn_uplift(values, dates, festival_days)
     last_week = values[-SEASON:]
     last_dates = dates[-SEASON:]
-    # remove the festival boost from last week, so we copy a "normal" week
     normal_week = [
         v / uplift if d in festival_days else v
         for v, d in zip(last_week, last_dates)
@@ -96,8 +105,8 @@ MODELS = {
 
 
 def backtest(values, dates, horizon, festival_days):
-    """Pretend to forecast the past, and measure the average miss (MAE)."""
-    errors = {name: [] for name in MODELS}
+    """Pretend to forecast the past. Returns each model's MAE and its signed misses."""
+    residuals = {name: [] for name in MODELS}
     first_cut = max(SEASON * 2, len(values) // 2)
 
     for cut in range(first_cut, len(values) - horizon + 1, horizon):
@@ -106,13 +115,14 @@ def backtest(values, dates, horizon, festival_days):
         for name, model in MODELS.items():
             # each model only sees data BEFORE the cut
             predicted = model(values[:cut], dates[:cut], future_dates, festival_days)
-            errors[name].extend(abs(a - p) for a, p in zip(actual, predicted))
+            residuals[name].extend(a - p for a, p in zip(actual, predicted))
 
-    return {
-        name: round(sum(errs) / len(errs), 2)
-        for name, errs in errors.items()
-        if errs
+    scores = {
+        name: round(sum(abs(r) for r in res) / len(res), 2)
+        for name, res in residuals.items()
+        if res
     }
+    return scores, residuals
 
 
 @app.get("/health")
@@ -139,20 +149,36 @@ def forecast(req: ForecastRequest):
     values = [row.sales for row in req.rows]
     festival_days = load_festival_days()
 
-    scores = backtest(values, dates, req.horizon, festival_days)
+    scores, residuals = backtest(values, dates, req.horizon, festival_days)
     best = min(scores, key=scores.get) if scores else "seasonal_naive"
 
     future_dates = [dates[-1] + timedelta(days=i + 1) for i in range(req.horizon)]
     predictions = MODELS[best](values, dates, future_dates, festival_days)
 
-    forecast_rows = [
-        {"date": day.isoformat(), "sales": round(p, 1)}
-        for day, p in zip(future_dates, predictions)
-    ]
+    # prediction interval from the winning model's backtest misses
+    best_residuals = sorted(residuals.get(best, []))
+    error_range = None
+    if len(best_residuals) >= MIN_RESIDUALS:
+        tail = (1 - LEVEL) / 2
+        error_range = {
+            "low": round(quantile(best_residuals, tail), 1),
+            "high": round(quantile(best_residuals, 1 - tail), 1),
+            "level": LEVEL,
+            "samples": len(best_residuals),
+        }
+
+    forecast_rows = []
+    for day, p in zip(future_dates, predictions):
+        row = {"date": day.isoformat(), "sales": round(p, 1), "lower": None, "upper": None}
+        if error_range:
+            row["lower"] = round(max(0, p + error_range["low"]), 1)
+            row["upper"] = round(p + error_range["high"], 1)
+        forecast_rows.append(row)
 
     return {
         "method": best,
         "scores": scores,
         "festival_uplift": round(learn_uplift(values, dates, festival_days), 2),
+        "error_range": error_range,
         "forecast": forecast_rows,
     }

@@ -10,6 +10,10 @@ const sampleMetrics = [
   { title: 'Average daily sales', value: '--', note: 'Upload a CSV to see it' },
 ]
 
+function signed(n) {
+  return (n > 0 ? '+' : '') + n.toFixed(1)
+}
+
 function App() {
   const [salesData, setSalesData] = useState([])
   const [summary, setSummary] = useState(null)
@@ -17,13 +21,14 @@ function App() {
   const forecast = summary ? summary.forecast : []
 
   let metrics = sampleMetrics
-   if (summary) {
+  if (summary) {
     const forecastTotal = forecast.reduce((sum, row) => sum + row.sales, 0)
     const scoreList = summary.scores
       ? Object.entries(summary.scores)
           .map(([name, value]) => `${name.replaceAll('_', ' ')}: ${value}`)
           .join(' | ')
       : ''
+    const range = summary.errorRange
 
     metrics = [
       {
@@ -50,6 +55,13 @@ function App() {
         title: 'Learned festival uplift',
         value: summary.festivalUplift ? `${summary.festivalUplift}x` : '--',
         note: '1.0x means no festival effect found',
+      },
+      {
+        title: 'Daily forecast range (80%)',
+        value: range ? `${signed(range.low)} to ${signed(range.high)}` : '--',
+        note: range
+          ? `From ${range.samples} backtest forecasts. Each day should land inside the band about 8 times in 10.`
+          : 'Not enough history to estimate a range',
       },
     ]
   }

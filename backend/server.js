@@ -40,9 +40,10 @@ app.post('/api/upload', async (req, res) => {
       count: rows.length,
       totalSales: total,
       averageSales: total / rows.length,
-            method: mlResult.method,
+      method: mlResult.method,
       scores: mlResult.scores,
       festivalUplift: mlResult.festival_uplift,
+      errorRange: mlResult.error_range,
       forecast: mlResult.forecast,
     })
   } catch {
