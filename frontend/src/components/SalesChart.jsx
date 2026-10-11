@@ -22,6 +22,7 @@ function SalesChart({ data, forecast }) {
   const future = (forecast || []).map((row) => ({
     date: row.date,
     forecast: row.sales,
+     order: row.order,
     lower: row.lower,
     band: row.lower != null && row.upper != null ? row.upper - row.lower : null,
   }))

@@ -199,4 +199,41 @@ def forecast(req: ForecastRequest):
 
         # fair test: learn the offset on the first half of the misses,
         # then measure cost on the second half it has never seen
-        half = len(best_residuals)
+        half = len(best_residuals) // 2
+        if half >= 5 and len(best_residuals) - half >= 5:
+            learned = quantile(sorted(best_residuals[:half]), critical)
+            unseen = best_residuals[half:]
+            cost_forecast = average_cost(unseen, 0.0, under, over)
+            cost_decision = average_cost(unseen, learned, under, over)
+            saving = None
+            if cost_forecast > 0:
+                saving = round(100 * (cost_forecast - cost_decision) / cost_forecast, 1)
+            decision["holdout"] = {
+                "days": len(unseen),
+                "cost_forecast": round(cost_forecast, 1),
+                "cost_decision": round(cost_decision, 1),
+                "saving_percent": saving,
+            }
+
+    forecast_rows = []
+    for day, p in zip(future_dates, predictions):
+        row = {
+            "date": day.isoformat(),
+            "sales": round(p, 1),
+            "lower": None,
+            "upper": None,
+            "order": max(0, round(p + offset)),
+        }
+        if error_range:
+            row["lower"] = round(max(0, p + error_range["low"]), 1)
+            row["upper"] = round(p + error_range["high"], 1)
+        forecast_rows.append(row)
+
+    return {
+        "method": best,
+        "scores": scores,
+        "festival_uplift": round(learn_uplift(values, dates, festival_days), 2),
+        "error_range": error_range,
+        "decision": decision,
+        "forecast": forecast_rows,
+    }
